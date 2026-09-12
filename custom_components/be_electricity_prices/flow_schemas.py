@@ -134,6 +134,7 @@ from .const import (
     CONF_SOLAR_KVA,
     CONF_SOLAR_REGIME,
     CONF_SUPPLIER,
+    CONF_TARIFF_CARD_DATE,
     CONF_WHATIF_CONSUMPTION_KWH,
     CONF_WHATIF_INJECTION_KWH,
     CONNECTION_KVA_TIERS,
@@ -494,7 +495,7 @@ def _contract_schema(
 
 
 def _add_contract_date_fields(fields: dict[Any, Any], defaults: dict[str, Any]) -> None:
-    """Append the optional contract start/end date pickers.
+    """Append the optional contract start / tariff card / end date pickers.
 
     Pre-filled with the stored value as a *suggestion* (not a default) on the
     options / reconfigure pass, so blanking the picker truly omits the key from
@@ -503,7 +504,11 @@ def _add_contract_date_fields(fields: dict[Any, Any], defaults: dict[str, Any]) 
     making the date unclearable.
     """
     date_selector = DateSelector()
-    for key in (CONF_CONTRACT_START_DATE, CONF_CONTRACT_END_DATE):
+    for key in (
+        CONF_CONTRACT_START_DATE,
+        CONF_TARIFF_CARD_DATE,
+        CONF_CONTRACT_END_DATE,
+    ):
         stored = defaults.get(key)
         if stored:
             fields[vol.Optional(key, description={"suggested_value": stored})] = (
@@ -524,19 +529,28 @@ def _add_contract_date_fields(fields: dict[Any, Any], defaults: dict[str, Any]) 
 
 
 def _validate_contract_dates(user_input: dict[str, Any]) -> dict[str, str]:
-    """Reject a future start date or an end date not after the start.
+    """Reject a future start or card date, or an end date not after the start.
 
-    Both fields are independently optional: an end date without a start date is
-    fine (a bare renewal reminder), so the ordering check only fires when both
-    are present.
+    All three fields are independently optional: an end date without a start
+    date is fine (a bare renewal reminder), so the ordering check only fires
+    when both are present.
+
+    The card date is checked only against today. It is NOT required to fall on
+    or before the start date, which looks like the obvious guard and is wrong:
+    a renewal re-signs a supply that began years ago onto this month's card, so
+    a card date after the start date is as ordinary as one before it.
     """
     from .cohort import _parse_iso_date
 
     errors: dict[str, str] = {}
     start = _parse_iso_date(user_input.get(CONF_CONTRACT_START_DATE))
+    card = _parse_iso_date(user_input.get(CONF_TARIFF_CARD_DATE))
     end = _parse_iso_date(user_input.get(CONF_CONTRACT_END_DATE))
-    if start is not None and start > dt_util.now().date():
+    today = dt_util.now().date()
+    if start is not None and start > today:
         errors[CONF_CONTRACT_START_DATE] = "start_date_in_future"
+    if card is not None and card > today:
+        errors[CONF_TARIFF_CARD_DATE] = "card_date_in_future"
     if start is not None and end is not None and end <= start:
         errors[CONF_CONTRACT_END_DATE] = "end_before_start"
     return errors

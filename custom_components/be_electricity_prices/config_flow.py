@@ -116,6 +116,7 @@ from .const import (
     CONF_REGION,
     CONF_SOLAR_REGIME,
     CONF_SUPPLIER,
+    CONF_TARIFF_CARD_DATE,
     SOLAR_REGIME_INJECTION,
     SPOT_PRICED_CONTRACT_KINDS,
     SUPPLIER_CUSTOM,
@@ -214,7 +215,11 @@ class _WizardStepsMixin:
                 # A cleared (blanked) optional date is absent from user_input;
                 # drop it so "leave blank" removes the date instead of keeping
                 # the previously stored one.
-                for key in (CONF_CONTRACT_START_DATE, CONF_CONTRACT_END_DATE):
+                for key in (
+                    CONF_CONTRACT_START_DATE,
+                    CONF_TARIFF_CARD_DATE,
+                    CONF_CONTRACT_END_DATE,
+                ):
                     if key not in user_input:
                         self._data.pop(key, None)
                 self._data.update(user_input)
@@ -281,7 +286,13 @@ class _WizardStepsMixin:
         """
         if self._data.get(CONF_SUPPLIER) == SUPPLIER_CUSTOM:
             return False
-        if not self._data.get(CONF_CONTRACT_START_DATE):
+        # Either date puts the entry on a signing cohort, so either one is
+        # reason to offer the rate that cohort actually signed at. Gating on
+        # the start date alone would skip the step for a household that knows
+        # its card month and not the day supply began.
+        if not self._data.get(CONF_CONTRACT_START_DATE) and not self._data.get(
+            CONF_TARIFF_CARD_DATE
+        ):
             return False
         return _contract_kind(
             self._data[CONF_SUPPLIER],

@@ -51,6 +51,7 @@ from custom_components.be_electricity_prices.const import (
     CONF_CONTRACT_END_DATE,
     CONF_CONTRACT_START_DATE,
     CONF_INCLUDE_VAT,
+    CONF_TARIFF_CARD_DATE,
     DOMAIN,
 )
 from custom_components.be_electricity_prices.cohort import _parse_iso_date
@@ -3580,6 +3581,33 @@ def test_validate_contract_dates_helper() -> None:
     ) == {CONF_CONTRACT_END_DATE: "end_before_start"}
     # An end date without a start date is a bare renewal reminder, allowed.
     assert _validate_contract_dates({CONF_CONTRACT_END_DATE: "2025-12-01"}) == {}
+    # A future tariff card month is rejected the same way a start date is: no
+    # supplier has published it yet, so nothing could ever resolve it.
+    assert _validate_contract_dates({CONF_TARIFF_CARD_DATE: "2099-01-01"}) == {
+        CONF_TARIFF_CARD_DATE: "card_date_in_future"
+    }
+    assert _validate_contract_dates({CONF_TARIFF_CARD_DATE: "2020-01-01"}) == {}
+    # And it is NOT ordered against the start date in either direction. A
+    # switcher signs before supply begins; a renewal re-signs a supply years
+    # old onto a recent card. Both are ordinary, so neither may be an error.
+    assert (
+        _validate_contract_dates(
+            {
+                CONF_CONTRACT_START_DATE: "2026-07-01",
+                CONF_TARIFF_CARD_DATE: "2026-06-18",
+            }
+        )
+        == {}
+    )
+    assert (
+        _validate_contract_dates(
+            {
+                CONF_CONTRACT_START_DATE: "2024-03-01",
+                CONF_TARIFF_CARD_DATE: "2026-08-04",
+            }
+        )
+        == {}
+    )
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
@@ -3625,6 +3653,105 @@ async def test_options_flow_contract_dates_round_trip(hass: HomeAssistant) -> No
 
     assert entry.data["contract_start_date"] == "2025-11-15"
     assert entry.data["contract_end_date"] == "2027-11-14"
+
+
+@pytest.mark.usefixtures("enable_custom_integrations")
+async def test_options_flow_tariff_card_date_round_trip(hass: HomeAssistant) -> None:
+    """The card month persists beside the start date, and clears on its own.
+
+    Issue #96: the two are a month apart for anyone who switched supplier, so
+    the card month has to be storable without disturbing the start date the
+    year-to-date window counts from.
+    """
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+
+    async def _walk(contract_step: dict[str, object]) -> None:
+        result = await _enter_edit_branch(hass, entry)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"supplier": "eneco", "region": "wallonia"}
+        )
+        assert result["step_id"] == "contract"
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], contract_step
+        )
+        # Fixed contract with a cohort date: the signing-rate step comes first.
+        assert result["step_id"] == "signed_rate"
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {}
+        )
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"dso": "ores"}
+        )
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"meter": "mono"}
+        )
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"dso_tariff_mode": "simple"}
+        )
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"solar_kva": 0.0, "solar_regime": "none"}
+        )
+        assert result["step_id"] == "meters"
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {}
+        )
+        assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+
+    await _walk(
+        {
+            "contract": "power_fix",
+            "contract_start_date": "2026-07-01",
+            "tariff_card_date": "2026-06-18",
+        }
+    )
+    assert entry.data["contract_start_date"] == "2026-07-01"
+    assert entry.data["tariff_card_date"] == "2026-06-18"
+
+    # Blanking the picker omits the key, which has to REMOVE it rather than
+    # leave the stored month quietly addressing the archive for ever.
+    await _walk({"contract": "power_fix", "contract_start_date": "2026-07-01"})
+    assert entry.data["contract_start_date"] == "2026-07-01"
+    assert "tariff_card_date" not in entry.data
+
+
+@pytest.mark.usefixtures("enable_custom_integrations")
+async def test_contract_step_rejects_future_card_date(hass: HomeAssistant) -> None:
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+
+    result = await _enter_edit_branch(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"supplier": "eneco", "region": "wallonia"}
+    )
+    assert result["step_id"] == "contract"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"contract": "power_fix", "tariff_card_date": "2099-01-01"},
+    )
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "contract"
+    assert result["errors"] == {"tariff_card_date": "card_date_in_future"}
+
+
+@pytest.mark.usefixtures("enable_custom_integrations")
+async def test_card_date_alone_offers_the_signing_rate_step(
+    hass: HomeAssistant,
+) -> None:
+    """A household that knows its card month and not the day supply began is
+    on a signing cohort too, so it gets the same rate override."""
+    entry = _make_entry()
+    entry.add_to_hass(hass)
+
+    result = await _enter_edit_branch(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"supplier": "eneco", "region": "wallonia"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"contract": "power_fix", "tariff_card_date": "2026-06-18"},
+    )
+    assert result["step_id"] == "signed_rate"
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")

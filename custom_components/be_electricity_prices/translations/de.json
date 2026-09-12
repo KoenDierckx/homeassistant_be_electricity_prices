@@ -15,13 +15,15 @@
         "data": {
           "contract": "Vertrag",
           "contract_start_date": "Vertragsbeginn (optional)",
+          "tariff_card_date": "Monat des Tarifblatts (optional)",
           "contract_end_date": "Vertragsende (optional)",
           "ytd_from_contract_start": "Jahreskosten ab Vertragsbeginn abrechnen"
         },
         "data_description": {
-          "contract_start_date": "Das Datum, an dem Ihr Vertrag begonnen hat. Ihr Tarif wird dann vom Tarifblatt jenes Monats gelesen statt vom aktuellen, bei jedem Anbieter, der seine alten Tarifblätter archiviert, und bei Festpreis-, dynamischen und monatlich indexierten Verträgen gleichermassen. Trägt Ihr Tarifblatt einen früheren Monat als den, in dem Ihre Belieferung begann, was bei einem Anbieterwechsel üblich ist, geben Sie stattdessen ein Datum im Monat des Tarifblatts an: daran sind Sie für die Laufzeit gebunden, und energie.be nennt diesen Monat im Produktnamen (Elektriciteit dynamisch particulier online 06/26). Das Attribut signing_card des Sensors current_price nennt das Tarifblatt, auf dem der Eintrag gelandet ist. Leer lassen, um immer das aktuelle Tarifblatt zu verwenden.",
+          "contract_start_date": "Das Datum, an dem Ihre Belieferung unter diesem Vertrag begonnen hat. Ihr Tarif wird dann vom Tarifblatt jenes Monats gelesen statt vom aktuellen, bei jedem Anbieter, der seine alten Tarifblätter archiviert, und bei Festpreis-, dynamischen und monatlich indexierten Verträgen gleichermassen. Trägt das von Ihnen unterschriebene Tarifblatt einen anderen Monat, geben Sie diesen im Feld darunter an. Das Attribut signing_card des Sensors current_price nennt das Tarifblatt, auf dem der Eintrag gelandet ist. Leer lassen, um immer das aktuelle Tarifblatt zu verwenden.",
+          "tariff_card_date": "Ein beliebiges Datum im Monat des Tarifblatts, auf dem Ihr Vertrag läuft. Ein Festpreis- oder dynamischer Vertrag wird nach dem bei Vertragsabschluss geltenden Tarifblatt berechnet, und ein Anbieterwechsel dauert etwa einen Monat, sodass dieses Tarifblatt oft den Monat vor Beginn Ihrer Belieferung trägt. energie.be nennt ihn im Produktnamen (Elektriciteit dynamisch particulier online 06/26). Leer lassen, um den Monat des Lieferbeginns zu verwenden, was stimmt, wenn Sie im selben Monat unterschrieben und begonnen haben. Nur die Suche nach dem Tarifblatt liest dieses Datum: Ihre Jahreskosten und Gebühren zählen weiter ab dem Vertragsbeginn darüber.",
           "contract_end_date": "Das Datum, an dem Ihr Vertrag endet. Wird als Zeitstempel-Sensor bereitgestellt, damit eine Automatisierung Sie an die Verlängerung erinnern kann, und von den voraussichtlichen Jahreskosten genutzt, um anzugeben, welcher Teil des Jahres noch unter diesem Vertrag läuft. Es ändert keinen abgerechneten Tarif.",
-          "ytd_from_contract_start": "Standardmässig zählen die Jahreskosten ab dem 1. Januar, unabhängig davon, wer Sie damals belieferte. Aktivieren Sie dies, um stattdessen am oben angegebenen Vertragsbeginn zu starten, sodass der Betrag nur diesen Vertrag abdeckt. Es liest dasselbe Datum: Setzen Sie es auf den Monat Ihres Tarifblatts statt auf den Tag des Lieferbeginns, verschiebt sich dieser Zeitraum mit. Die Gebühren werden über denselben Zeitraum anteilig berechnet, und der Wert sinkt beim ersten Mal, wenn dies greift. Betrifft nur das erste Kalenderjahr des Vertrags; ab dem folgenden 1. Januar sind beide gleich."
+          "ytd_from_contract_start": "Standardmässig zählen die Jahreskosten ab dem 1. Januar, unabhängig davon, wer Sie damals belieferte. Aktivieren Sie dies, um stattdessen am oben angegebenen Vertragsbeginn zu starten, sodass der Betrag nur diesen Vertrag abdeckt. Die Gebühren werden über denselben Zeitraum anteilig berechnet, und der Wert sinkt beim ersten Mal, wenn dies greift. Betrifft nur das erste Kalenderjahr des Vertrags; ab dem folgenden 1. Januar sind beide gleich."
         }
       },
       "signed_rate": {
@@ -217,6 +219,7 @@
       "empty_api_key": "Geben Sie Ihren ENTSO-E Token ein. Dieser Vertrag wird am Day-Ahead-Markt bepreist und laesst sich ohne Token nicht einrichten. Sie erhalten ihn auf transparency.entsoe.eu (My Account Settings -> Web API Security Token).",
       "cannot_connect": "ENTSO-E nicht erreichbar, Token konnte nicht geprueft werden. Pruefen Sie Ihr Netzwerk und versuchen Sie es erneut.",
       "start_date_in_future": "Das Vertragsbeginndatum darf nicht in der Zukunft liegen.",
+      "card_date_in_future": "Der Monat des Tarifblatts kann nicht in der Zukunft liegen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
       "register_pair_incomplete": "Geben Sie sowohl das Tag- als auch das Nachtregister an, oder stattdessen den Gesamtsensor, oder lassen Sie alle drei leer. Mit einem Register des Paares und ohne Gesamtwert kann die Jahreskosten Ihren Verbrauch nicht aufteilen und fällt auf die reinen Gebühren zurück.",
       "supplier_region_unavailable": "Dieser Lieferant verkauft in der gewählten Region keinen Haushaltsstrom. Wählen Sie einen anderen Lieferanten oder eine andere Region."
@@ -237,6 +240,7 @@
       "empty_api_key": "Geben Sie Ihren ENTSO-E Token ein. Dieser Vertrag wird am Day-Ahead-Markt bepreist und laesst sich ohne Token nicht einrichten. Sie erhalten ihn auf transparency.entsoe.eu (My Account Settings -> Web API Security Token).",
       "cannot_connect": "ENTSO-E nicht erreichbar, Token konnte nicht geprueft werden. Pruefen Sie Ihr Netzwerk und versuchen Sie es erneut.",
       "start_date_in_future": "Das Vertragsbeginndatum darf nicht in der Zukunft liegen.",
+      "card_date_in_future": "Der Monat des Tarifblatts kann nicht in der Zukunft liegen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
       "register_pair_incomplete": "Geben Sie sowohl das Tag- als auch das Nachtregister an, oder stattdessen den Gesamtsensor, oder lassen Sie alle drei leer. Mit einem Register des Paares und ohne Gesamtwert kann die Jahreskosten Ihren Verbrauch nicht aufteilen und fällt auf die reinen Gebühren zurück.",
       "supplier_region_unavailable": "Dieser Lieferant verkauft in der gewählten Region keinen Haushaltsstrom. Wählen Sie einen anderen Lieferanten oder eine andere Region.",
@@ -306,13 +310,15 @@
         "data": {
           "contract": "Vertrag",
           "contract_start_date": "Vertragsbeginn (optional)",
+          "tariff_card_date": "Monat des Tarifblatts (optional)",
           "contract_end_date": "Vertragsende (optional)",
           "ytd_from_contract_start": "Jahreskosten ab Vertragsbeginn abrechnen"
         },
         "data_description": {
-          "contract_start_date": "Das Datum, an dem Ihr Vertrag begonnen hat. Ihr Tarif wird dann vom Tarifblatt jenes Monats gelesen statt vom aktuellen, bei jedem Anbieter, der seine alten Tarifblätter archiviert, und bei Festpreis-, dynamischen und monatlich indexierten Verträgen gleichermassen. Trägt Ihr Tarifblatt einen früheren Monat als den, in dem Ihre Belieferung begann, was bei einem Anbieterwechsel üblich ist, geben Sie stattdessen ein Datum im Monat des Tarifblatts an: daran sind Sie für die Laufzeit gebunden, und energie.be nennt diesen Monat im Produktnamen (Elektriciteit dynamisch particulier online 06/26). Das Attribut signing_card des Sensors current_price nennt das Tarifblatt, auf dem der Eintrag gelandet ist. Leer lassen, um immer das aktuelle Tarifblatt zu verwenden.",
+          "contract_start_date": "Das Datum, an dem Ihre Belieferung unter diesem Vertrag begonnen hat. Ihr Tarif wird dann vom Tarifblatt jenes Monats gelesen statt vom aktuellen, bei jedem Anbieter, der seine alten Tarifblätter archiviert, und bei Festpreis-, dynamischen und monatlich indexierten Verträgen gleichermassen. Trägt das von Ihnen unterschriebene Tarifblatt einen anderen Monat, geben Sie diesen im Feld darunter an. Das Attribut signing_card des Sensors current_price nennt das Tarifblatt, auf dem der Eintrag gelandet ist. Leer lassen, um immer das aktuelle Tarifblatt zu verwenden.",
+          "tariff_card_date": "Ein beliebiges Datum im Monat des Tarifblatts, auf dem Ihr Vertrag läuft. Ein Festpreis- oder dynamischer Vertrag wird nach dem bei Vertragsabschluss geltenden Tarifblatt berechnet, und ein Anbieterwechsel dauert etwa einen Monat, sodass dieses Tarifblatt oft den Monat vor Beginn Ihrer Belieferung trägt. energie.be nennt ihn im Produktnamen (Elektriciteit dynamisch particulier online 06/26). Leer lassen, um den Monat des Lieferbeginns zu verwenden, was stimmt, wenn Sie im selben Monat unterschrieben und begonnen haben. Nur die Suche nach dem Tarifblatt liest dieses Datum: Ihre Jahreskosten und Gebühren zählen weiter ab dem Vertragsbeginn darüber.",
           "contract_end_date": "Das Datum, an dem Ihr Vertrag endet. Wird als Zeitstempel-Sensor bereitgestellt, damit eine Automatisierung Sie an die Verlängerung erinnern kann, und von den voraussichtlichen Jahreskosten genutzt, um anzugeben, welcher Teil des Jahres noch unter diesem Vertrag läuft. Es ändert keinen abgerechneten Tarif.",
-          "ytd_from_contract_start": "Standardmässig zählen die Jahreskosten ab dem 1. Januar, unabhängig davon, wer Sie damals belieferte. Aktivieren Sie dies, um stattdessen am oben angegebenen Vertragsbeginn zu starten, sodass der Betrag nur diesen Vertrag abdeckt. Es liest dasselbe Datum: Setzen Sie es auf den Monat Ihres Tarifblatts statt auf den Tag des Lieferbeginns, verschiebt sich dieser Zeitraum mit. Die Gebühren werden über denselben Zeitraum anteilig berechnet, und der Wert sinkt beim ersten Mal, wenn dies greift. Betrifft nur das erste Kalenderjahr des Vertrags; ab dem folgenden 1. Januar sind beide gleich."
+          "ytd_from_contract_start": "Standardmässig zählen die Jahreskosten ab dem 1. Januar, unabhängig davon, wer Sie damals belieferte. Aktivieren Sie dies, um stattdessen am oben angegebenen Vertragsbeginn zu starten, sodass der Betrag nur diesen Vertrag abdeckt. Die Gebühren werden über denselben Zeitraum anteilig berechnet, und der Wert sinkt beim ersten Mal, wenn dies greift. Betrifft nur das erste Kalenderjahr des Vertrags; ab dem folgenden 1. Januar sind beide gleich."
         }
       },
       "signed_rate": {

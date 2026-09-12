@@ -69,7 +69,7 @@ from custom_components.be_electricity_prices.const import CONF_CARD_ARCHIVE
 from custom_components.be_electricity_prices.cohort import (
     _cohort_energy_from_archived,
     _cohort_energy_leg,
-    _contract_start_month,
+    _tariff_card_month,
     _effective_snapshot_for_month,
     _manual_energy_leg,
 )
@@ -5211,13 +5211,34 @@ def _fixed_extractor(fetch_for_month: Any) -> SupplierExtractor:
     )
 
 
-def test_contract_start_month_parses_to_first_of_month() -> None:
-    assert _contract_start_month(_entry()) is None
-    assert _contract_start_month(_entry(contract_start_date="2025-11-15")) == date(
+def test_tariff_card_month_parses_to_first_of_month() -> None:
+    assert _tariff_card_month(_entry()) is None
+    assert _tariff_card_month(_entry(contract_start_date="2025-11-15")) == date(
         2025, 11, 1
     )
-    assert _contract_start_month(_entry(contract_start_date="")) is None
-    assert _contract_start_month(_entry(contract_start_date="not-a-date")) is None
+    assert _tariff_card_month(_entry(contract_start_date="")) is None
+    assert _tariff_card_month(_entry(contract_start_date="not-a-date")) is None
+
+
+def test_tariff_card_month_prefers_its_own_field() -> None:
+    """The card month is the one the archive is addressed by.
+
+    A contract signed in June and supplied from July is on June's card, and
+    the start date is the month supply began, so reading it as the card month
+    billed a switcher one card late (issue #96). The start date stays the
+    fallback, so every entry that sets no card month keeps what it had.
+    """
+    entry = _entry(contract_start_date="2026-07-01", tariff_card_date="2026-06-18")
+    assert _tariff_card_month(entry) == date(2026, 6, 1)
+    # A renewal is the other direction: a supply years old re-signed onto a
+    # recent card. Nothing orders the two dates, so nothing may assume one.
+    entry = _entry(contract_start_date="2024-03-01", tariff_card_date="2026-08-04")
+    assert _tariff_card_month(entry) == date(2026, 8, 1)
+    # Unparseable card date falls back rather than taking the entry off cohort
+    # pricing altogether.
+    entry = _entry(contract_start_date="2026-07-01", tariff_card_date="not-a-date")
+    assert _tariff_card_month(entry) == date(2026, 7, 1)
+    assert _tariff_card_month(_entry(tariff_card_date="2026-06-18")) == date(2026, 6, 1)
 
 
 async def test_cohort_energy_leg_fixed_uses_signing_month(
@@ -5359,6 +5380,52 @@ async def test_cohort_card_names_the_card_the_legs_came_off(
     legs = await _cohort_legs(
         hass, MagicMock(), _fixed_extractor(_ffm), "test", "wallonia", entry, current
     )
+    assert legs.card == "juni 2026"
+
+
+async def test_cohort_asks_for_the_tariff_card_month_not_the_start_month(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    """The archive is addressed by the card month when the entry names one.
+
+    Issue #96: a contract signed in June and supplied from July is billed on
+    June's card for the term, so asking the archive for July billed the wrong
+    cohort. Measured on Eneco's fixed card, July 2026 is 0,1681 EUR/kWh and
+    August 0,2028, so one month late is 121 EUR/yr at 3500 kWh.
+    """
+    from custom_components.be_electricity_prices.cohort import _cohort_legs
+
+    freezer.move_to("2026-09-15 12:00:00+02:00")
+    current = make_snapshot(
+        energy=FixedRates(single=0.30), publication_label="september 2026"
+    )
+    cards = {
+        date(2026, 6, 1): make_snapshot(
+            energy=FixedRates(single=0.1681), publication_label="juni 2026"
+        ),
+        date(2026, 7, 1): make_snapshot(
+            energy=FixedRates(single=0.2028), publication_label="juli 2026"
+        ),
+    }
+    asked: list[date] = []
+
+    async def _ffm(
+        _session: object, _contract: str, _region: str, year_month: date
+    ) -> SupplierSnapshot | None:
+        asked.append(year_month)
+        return cards.get(year_month)
+
+    _monthly_snapshots(hass).clear()
+    entry = _entry(
+        contract="test",
+        contract_start_date="2026-07-01",
+        tariff_card_date="2026-06-18",
+    )
+    legs = await _cohort_legs(
+        hass, MagicMock(), _fixed_extractor(_ffm), "test", "wallonia", entry, current
+    )
+    assert asked == [date(2026, 6, 1)]
+    assert legs.energy == FixedRates(single=0.1681)
     assert legs.card == "juni 2026"
 
 

@@ -43,7 +43,7 @@ from .coordinator_spots import _SpotsMixin
 
 from .cohort import (
     _cohort_legs,
-    _contract_start_month,
+    _tariff_card_month,
     _effective_snapshot_for_month,
     signing_month_snapshot,
     ytd_window_start,
@@ -1317,15 +1317,16 @@ class BePricesCoordinator(
     def _persisted_months(self, today: date) -> list[date]:
         """The months whose archived card is worth keeping on disk.
 
-        The year-to-date window, plus the SIGNING month when the entry has a
-        contract start date. That one is not part of the walk -- it can be
+        The year-to-date window, plus the month of the card the entry is
+        billed on when it names one, whether through its own tariff card month
+        or through its start date. That one is not part of the walk, it can be
         years back -- but ``_cohort_legs`` resolves it on every tick to freeze
         the rate the customer signed for, and it does so INSIDE config-entry
         setup, because the live price table is built from it. One row on disk
         is what keeps that from being a card fetch on every restart.
         """
         months = self._ytd_months(today)
-        signing = _contract_start_month(self.entry)
+        signing = _tariff_card_month(self.entry)
         if signing is not None and signing not in months:
             months.append(signing)
         return months

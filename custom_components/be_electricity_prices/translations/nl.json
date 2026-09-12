@@ -15,13 +15,15 @@
         "data": {
           "contract": "Contract",
           "contract_start_date": "Startdatum van het contract (optioneel)",
+          "tariff_card_date": "Maand van de tariefkaart (optioneel)",
           "contract_end_date": "Einddatum van het contract (optioneel)",
           "ytd_from_contract_start": "Reken het jaartotaal vanaf de startdatum van het contract"
         },
         "data_description": {
-          "contract_start_date": "De datum waarop uw contract is gestart. Uw tarief wordt dan gelezen van de tariefkaart van die maand in plaats van de huidige, bij elke leverancier die zijn oude kaarten archiveert, en zowel voor vaste, dynamische als maandelijks geïndexeerde contracten. Staat uw tariefkaart op een eerdere maand dan die waarin uw levering begon, wat gebruikelijk is bij een overstap, vul dan een datum in de maand van de kaart in: dat is de kaart waaraan u voor de looptijd gebonden bent, en energie.be vermeldt die maand in de productnaam (Elektriciteit dynamisch particulier online 06/26). Het attribuut signing_card van de sensor current_price noemt de kaart waarop deze invoer is uitgekomen. Laat leeg om altijd de huidige kaart te gebruiken.",
+          "contract_start_date": "De datum waarop uw levering onder dit contract is gestart. Uw tarief wordt dan gelezen van de tariefkaart van die maand in plaats van de huidige, bij elke leverancier die zijn oude kaarten archiveert, en zowel voor vaste, dynamische als maandelijks geïndexeerde contracten. Draagt de tariefkaart die u tekende een andere maand, vul die dan hieronder in. Het attribuut signing_card van de sensor current_price noemt de kaart waarop deze invoer is uitgekomen. Laat leeg om altijd de huidige kaart te gebruiken.",
+          "tariff_card_date": "Een willekeurige datum in de maand van de tariefkaart waarop uw contract loopt. Een vast of dynamisch contract wordt geprijsd op de kaart die gold toen u tekende, en een overstap duurt ongeveer een maand, dus die kaart draagt vaak de maand voor de start van uw levering. energie.be zet ze in de productnaam (Elektriciteit dynamisch particulier online 06/26). Laat leeg om de maand van de start van uw levering te gebruiken, wat klopt als u in dezelfde maand tekende en startte. Alleen het opzoeken van de kaart leest dit: uw jaartotaal en vaste kosten blijven tellen vanaf de startdatum hierboven.",
           "contract_end_date": "De datum waarop uw contract afloopt. Wordt als tijdstempelsensor beschikbaar gesteld zodat een automatisering u aan verlenging kan herinneren, en wordt door de verwachte jaarkost gebruikt om aan te geven welk deel van het jaar nog onder dit contract valt. Het wijzigt geen enkel gefactureerd tarief.",
-          "ytd_from_contract_start": "Standaard telt de jaarkost vanaf 1 januari, ongeacht wie u toen leverde. Vink dit aan om te starten op de startdatum van het contract hierboven, zodat het bedrag alleen dit contract dekt. Dit leest diezelfde datum, dus als u die op de maand van uw tariefkaart zet in plaats van op de dag waarop uw levering begon, schuift dit venster mee. Vaste kosten worden over dezelfde periode pro rata berekend, en de waarde daalt de eerste keer dat dit van toepassing is. Geldt alleen voor het eerste kalenderjaar van het contract; vanaf de volgende 1 januari zijn beide gelijk."
+          "ytd_from_contract_start": "Standaard telt de jaarkost vanaf 1 januari, ongeacht wie u toen leverde. Vink dit aan om te starten op de startdatum van het contract hierboven, zodat het bedrag alleen dit contract dekt. Vaste kosten worden over dezelfde periode pro rata berekend, en de waarde daalt de eerste keer dat dit van toepassing is. Geldt alleen voor het eerste kalenderjaar van het contract; vanaf de volgende 1 januari zijn beide gelijk."
         }
       },
       "signed_rate": {
@@ -217,6 +219,7 @@
       "empty_api_key": "Voer uw ENTSO-E token in. Dit contract wordt geprijsd op de day-ahead markt en kan niet zonder token worden ingesteld. Vraag hem aan op transparency.entsoe.eu (My Account Settings -> Web API Security Token).",
       "cannot_connect": "Kon ENTSO-E niet bereiken om de token te verifieren. Controleer uw netwerk en probeer opnieuw.",
       "start_date_in_future": "De startdatum van het contract kan niet in de toekomst liggen.",
+      "card_date_in_future": "De maand van de tariefkaart kan niet in de toekomst liggen.",
       "end_before_start": "De einddatum van het contract moet na de startdatum liggen.",
       "register_pair_incomplete": "Vul zowel het dag- als het nachtregister in, of vul in de plaats de totaalsensor in, of laat ze alle drie leeg. Met een register van het paar en geen totaal kan de jaarkost uw verbruik niet splitsen en valt hij terug op enkel de vaste kosten.",
       "supplier_region_unavailable": "Deze leverancier biedt geen residentiele elektriciteit aan in de gekozen regio. Kies een andere leverancier of regio."
@@ -237,6 +240,7 @@
       "empty_api_key": "Voer uw ENTSO-E token in. Dit contract wordt geprijsd op de day-ahead markt en kan niet zonder token worden ingesteld. Vraag hem aan op transparency.entsoe.eu (My Account Settings -> Web API Security Token).",
       "cannot_connect": "Kon ENTSO-E niet bereiken om de token te verifieren. Controleer uw netwerk en probeer opnieuw.",
       "start_date_in_future": "De startdatum van het contract kan niet in de toekomst liggen.",
+      "card_date_in_future": "De maand van de tariefkaart kan niet in de toekomst liggen.",
       "end_before_start": "De einddatum van het contract moet na de startdatum liggen.",
       "register_pair_incomplete": "Vul zowel het dag- als het nachtregister in, of vul in de plaats de totaalsensor in, of laat ze alle drie leeg. Met een register van het paar en geen totaal kan de jaarkost uw verbruik niet splitsen en valt hij terug op enkel de vaste kosten.",
       "supplier_region_unavailable": "Deze leverancier biedt geen residentiele elektriciteit aan in de gekozen regio. Kies een andere leverancier of regio.",
@@ -306,13 +310,15 @@
         "data": {
           "contract": "Contract",
           "contract_start_date": "Startdatum van het contract (optioneel)",
+          "tariff_card_date": "Maand van de tariefkaart (optioneel)",
           "contract_end_date": "Einddatum van het contract (optioneel)",
           "ytd_from_contract_start": "Reken het jaartotaal vanaf de startdatum van het contract"
         },
         "data_description": {
-          "contract_start_date": "De datum waarop uw contract is gestart. Uw tarief wordt dan gelezen van de tariefkaart van die maand in plaats van de huidige, bij elke leverancier die zijn oude kaarten archiveert, en zowel voor vaste, dynamische als maandelijks geïndexeerde contracten. Staat uw tariefkaart op een eerdere maand dan die waarin uw levering begon, wat gebruikelijk is bij een overstap, vul dan een datum in de maand van de kaart in: dat is de kaart waaraan u voor de looptijd gebonden bent, en energie.be vermeldt die maand in de productnaam (Elektriciteit dynamisch particulier online 06/26). Het attribuut signing_card van de sensor current_price noemt de kaart waarop deze invoer is uitgekomen. Laat leeg om altijd de huidige kaart te gebruiken.",
+          "contract_start_date": "De datum waarop uw levering onder dit contract is gestart. Uw tarief wordt dan gelezen van de tariefkaart van die maand in plaats van de huidige, bij elke leverancier die zijn oude kaarten archiveert, en zowel voor vaste, dynamische als maandelijks geïndexeerde contracten. Draagt de tariefkaart die u tekende een andere maand, vul die dan hieronder in. Het attribuut signing_card van de sensor current_price noemt de kaart waarop deze invoer is uitgekomen. Laat leeg om altijd de huidige kaart te gebruiken.",
+          "tariff_card_date": "Een willekeurige datum in de maand van de tariefkaart waarop uw contract loopt. Een vast of dynamisch contract wordt geprijsd op de kaart die gold toen u tekende, en een overstap duurt ongeveer een maand, dus die kaart draagt vaak de maand voor de start van uw levering. energie.be zet ze in de productnaam (Elektriciteit dynamisch particulier online 06/26). Laat leeg om de maand van de start van uw levering te gebruiken, wat klopt als u in dezelfde maand tekende en startte. Alleen het opzoeken van de kaart leest dit: uw jaartotaal en vaste kosten blijven tellen vanaf de startdatum hierboven.",
           "contract_end_date": "De datum waarop uw contract afloopt. Wordt als tijdstempelsensor beschikbaar gesteld zodat een automatisering u aan verlenging kan herinneren, en wordt door de verwachte jaarkost gebruikt om aan te geven welk deel van het jaar nog onder dit contract valt. Het wijzigt geen enkel gefactureerd tarief.",
-          "ytd_from_contract_start": "Standaard telt de jaarkost vanaf 1 januari, ongeacht wie u toen leverde. Vink dit aan om te starten op de startdatum van het contract hierboven, zodat het bedrag alleen dit contract dekt. Dit leest diezelfde datum, dus als u die op de maand van uw tariefkaart zet in plaats van op de dag waarop uw levering begon, schuift dit venster mee. Vaste kosten worden over dezelfde periode pro rata berekend, en de waarde daalt de eerste keer dat dit van toepassing is. Geldt alleen voor het eerste kalenderjaar van het contract; vanaf de volgende 1 januari zijn beide gelijk."
+          "ytd_from_contract_start": "Standaard telt de jaarkost vanaf 1 januari, ongeacht wie u toen leverde. Vink dit aan om te starten op de startdatum van het contract hierboven, zodat het bedrag alleen dit contract dekt. Vaste kosten worden over dezelfde periode pro rata berekend, en de waarde daalt de eerste keer dat dit van toepassing is. Geldt alleen voor het eerste kalenderjaar van het contract; vanaf de volgende 1 januari zijn beide gelijk."
         }
       },
       "signed_rate": {

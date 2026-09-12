@@ -156,6 +156,22 @@ CONF_CONTRACT: Final = "contract"
 CONF_CONTRACT_START_DATE: Final = "contract_start_date"
 CONF_CONTRACT_END_DATE: Final = "contract_end_date"
 
+# The month of the tariff card this contract is actually billed on, when that
+# is not the month supply started. A fixed or dynamic contract is locked to the
+# card in force when it was SIGNED, and a supplier switch takes about a month
+# to go through, so the two are usually a month apart: the customer on issue
+# #96 is on energie.be's "06/26" card with supply from 01.07.2026, and the
+# supplier prints that month in the product name. A renewal is the other
+# direction, re-signing a years-old supply onto this month's card, so no
+# ordering between the two dates can be assumed.
+#
+# Optional, and blank means "the month supply started", which is what the
+# cohort used to read unconditionally. Only the archive lookup reads this; the
+# year-to-date window, the fee proration and the welcome-credit window keep
+# reading CONF_CONTRACT_START_DATE, because those are about when the household
+# began being supplied, not about which card priced it.
+CONF_TARIFF_CARD_DATE: Final = "tariff_card_date"
+
 # Whether current_year_cost accumulates from the contract start date instead
 # of 1 January. Off by default and absent from every entry that predates it,
 # because turning it on lowers the figure: a contract signed on 30 June bills

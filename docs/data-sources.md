@@ -42,8 +42,8 @@ knowledge of contracts: the coordinator owns all of that and calls this client.
 
 | Constant | Value | Source |
 | --- | --- | --- |
-| `ENTSOE_BASE_URL` | `https://web-api.tp.entsoe.eu/api` | `const.py:437` |
-| `ENTSOE_BE_DOMAIN` | `10YBE----------2` (BE bidding zone EIC) | `const.py:438` |
+| `ENTSOE_BASE_URL` | `https://web-api.tp.entsoe.eu/api` | `const.py:453` |
+| `ENTSOE_BE_DOMAIN` | `10YBE----------2` (BE bidding zone EIC) | `const.py:454` |
 
 The client is constructed with the user's ENTSO-E API key and Home Assistant's
 shared `aiohttp` session (`api.py:69`). The key is passed on every request as
@@ -460,7 +460,7 @@ first and last UTC hour, keeping the query window aligned with the backfill's
 ### Billing each past hour at its historical rate
 
 Both backfill passes cache one `SupplierSnapshot` per month via
-`_month_snapshot_cache` (`cohort.py:762`, called at `backfill.py:431`), so a 365-day window
+`_month_snapshot_cache` (`cohort.py:775`, called at `backfill.py:431`), so a 365-day window
 touches at most 12 archive fetches. `_snapshot_for_month` asks the
 repository's own card archive first for a closed month (`_archived_card_from_github`, the
 `archive` branch that `.github/workflows/archive_cards.yml` writes daily and mirrors the supplier
@@ -727,7 +727,7 @@ weights in the entry's Store blob so a restart does not force a fresh download.
 Two things bound what a cold profile costs. **The first tick never waits on
 one**: it runs inside config-entry setup, and the RLP workbook alone is 18 s of
 download and parse on a Raspberry Pi while every compensation entry wants it,
-so the tick schedules `_fill_profiles` (`coordinator.py:1333`) and prices the
+so the tick schedules `_fill_profiles` (`coordinator.py:1334`) and prices the
 plain arithmetic mean meanwhile -- the same degradation a failed fetch already
 has. **And one file serves every entry**: `_shared_profile`
 (`coordinator_spots.py:731`) keys a process-wide row by `(kind, year, blend)`

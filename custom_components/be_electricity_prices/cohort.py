@@ -59,6 +59,7 @@ from .const import (
     CONF_MANUAL_ENERGY_SINGLE,
     CONF_MANUAL_YEARLY_FEE,
     CONF_SUPPLIER,
+    CONF_TARIFF_CARD_DATE,
     SUPPLIER_CUSTOM,
 )
 from .providers.base import (
@@ -96,14 +97,26 @@ def _parse_iso_date(value: Any) -> date | None:
         return None
 
 
-def _contract_start_month(entry: ConfigEntry) -> date | None:
-    """First-of-month of the configured contract start date, or ``None``.
+def _tariff_card_month(entry: ConfigEntry) -> date | None:
+    """First-of-month of the card this contract is billed on, or ``None``.
 
-    The signing month is what a fixed/dynamic contract's rate is locked
-    against; the day within the month is irrelevant to which monthly card
-    applies, so normalise to the first.
+    A fixed or dynamic contract is locked to the card in force when it was
+    SIGNED, which is not always the month supply began: a supplier switch
+    takes about a month to go through, so a customer who signed in June is
+    supplied from July on June's card, and energie.be goes as far as printing
+    that month in the product name ("... 06/26"). Reading the start date as
+    the card month therefore billed a switcher one card too late, which on
+    Eneco's fixed card between July and August 2026 is 0,1681 against 0,2028
+    EUR/kWh, 121 EUR/yr at 3500 kWh (issue #96).
+
+    So the card month is its own optional field, and the start date is the
+    fallback for every entry that does not set one, which is the behaviour
+    they already had. The day within the month is irrelevant to which monthly
+    card applies, so normalise to the first.
     """
-    d = _parse_iso_date(entry.data.get(CONF_CONTRACT_START_DATE))
+    d = _parse_iso_date(entry.data.get(CONF_TARIFF_CARD_DATE)) or _parse_iso_date(
+        entry.data.get(CONF_CONTRACT_START_DATE)
+    )
     if d is None:
         return None
     return date(d.year, d.month, 1)
@@ -530,7 +543,7 @@ async def _cohort_legs(
         # Guarding here rather than only popping the keys in the flow is what
         # heals the entries already holding them.
         return _CohortLegs(None, None)
-    start = _contract_start_month(entry)
+    start = _tariff_card_month(entry)
     if start is None:
         return _CohortLegs(_month_indexed_leg(current_snapshot, entry), None)
     now = dt_util.now()
@@ -678,7 +691,7 @@ async def signing_month_snapshot(
     """
     if contract != entry.data.get(CONF_CONTRACT):
         return current_snapshot
-    start = _contract_start_month(entry)
+    start = _tariff_card_month(entry)
     if start is None or extractor.fetch_for_month is None:
         return current_snapshot
     now = dt_util.now()

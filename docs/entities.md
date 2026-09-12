@@ -173,7 +173,7 @@ The payload:
 | Attribute | Source | Meaning |
 | --- | --- | --- |
 | `snapshot_publication` | `data.snapshot_publication` | supplier card's publication label |
-| `signing_card` | `data.signing_card` | present only when a contract start date is set: the card the signing cohort resolved to, or the current card's label followed by the month the archive could not serve |
+| `signing_card` | `data.signing_card` | present only when the entry names a cohort month (its tariff card month, else its contract start date): the card the signing cohort resolved to, or the current card's label followed by the month the archive could not serve |
 | `snapshot_age_hours` | `round(data.snapshot_age_hours, 2)` | hours since the snapshot was fetched |
 | `snapshot_stale` | `data.snapshot_stale` | true past the staleness threshold |
 | `last_error` | `data.last_error` | last fetch/parse error string, or empty. A fetch failure always names the exception, so a CDN timeout reads `network error fetching <url>: TimeoutError` |

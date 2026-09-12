@@ -40,13 +40,13 @@ entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 ```
 
-`BePricesCoordinator.__init__` (`coordinator.py:882`) chains to `DataUpdateCoordinator.__init__` with `update_interval=timedelta(minutes=UPDATE_INTERVAL_MINUTES)` (`coordinator.py:904`). `UPDATE_INTERVAL_MINUTES` is `60` (`const.py:478`): the coordinator ticks hourly for every contract kind, and the dynamic branch piggybacks the ENTSO-E refresh onto the same tick rather than running a second timer.
+`BePricesCoordinator.__init__` (`coordinator.py:882`) chains to `DataUpdateCoordinator.__init__` with `update_interval=timedelta(minutes=UPDATE_INTERVAL_MINUTES)` (`coordinator.py:904`). `UPDATE_INTERVAL_MINUTES` is `60` (`const.py:494`): the coordinator ticks hourly for every contract kind, and the dynamic branch piggybacks the ENTSO-E refresh onto the same tick rather than running a second timer.
 
 ### 1.2 The runtime_data ordering trap
 
 `entry.runtime_data` is assigned *after* `async_config_entry_first_refresh` returns (`__init__.py:177`). During that very first refresh `runtime_data` is HA's `UNDEFINED` sentinel, not this coordinator. Two guards depend on this:
 
-- `_save_persistent` reads `runtime_data` defensively (`coordinator.py:1597`) and only skips the write when it has been explicitly assigned to a *different* `BePricesCoordinator`. It must not skip during first refresh (when the attribute is `UNDEFINED`), or the first snapshot would never persist.
+- `_save_persistent` reads `runtime_data` defensively (`coordinator.py:1598`) and only skips the write when it has been explicitly assigned to a *different* `BePricesCoordinator`. It must not skip during first refresh (when the attribute is `UNDEFINED`), or the first snapshot would never persist.
 - `async_unload_entry` (`__init__.py:403`) reads `runtime_data` with `getattr(..., None)` and an `isinstance` check, because a setup that raised before line 172 leaves the sentinel in place; a bare `is not None` test would pass and then `AttributeError` on `._supplier_tuple`, masking the real setup failure.
 
 Never read `entry.runtime_data` as "this coordinator" during first refresh.
@@ -55,8 +55,8 @@ Never read `entry.runtime_data` as "this coordinator" during first refresh.
 
 `__init__` snapshots two things at construction time so later reload races resolve correctly:
 
-- `self._supplier_tuple` (`coordinator.py:888`): the `(supplier, contract, region)` triple frozen at build time. `async_unload_entry` (`__init__.py:403`) and `_save_persistent` (`coordinator.py:1597`) target this *original* tuple even after an OptionsFlow edit has mutated `entry.data`, because HA mutates `entry.data` before firing the reload.
-- `self._entry_data_signature` (`coordinator.py:897`): a `frozenset` of every `entry.data` item, built by `_compute_data_signature` (`coordinator.py:1477`). `_async_options_updated` (`__init__.py:500`) compares it against the current entry to skip a needless reload when only `entry.options` changed (an OptionsFlow no-op `options = {}` finalize). Every load-bearing field lives in `entry.data`, so an options-only delta is safe to ignore.
+- `self._supplier_tuple` (`coordinator.py:888`): the `(supplier, contract, region)` triple frozen at build time. `async_unload_entry` (`__init__.py:403`) and `_save_persistent` (`coordinator.py:1598`) target this *original* tuple even after an OptionsFlow edit has mutated `entry.data`, because HA mutates `entry.data` before firing the reload.
+- `self._entry_data_signature` (`coordinator.py:897`): a `frozenset` of every `entry.data` item, built by `_compute_data_signature` (`coordinator.py:1478`). `_async_options_updated` (`__init__.py:500`) compares it against the current entry to skip a needless reload when only `entry.options` changed (an OptionsFlow no-op `options = {}` finalize). Every load-bearing field lives in `entry.data`, so an options-only delta is safe to ignore.
 
 Other important instance fields set in `__init__`:
 
@@ -157,7 +157,7 @@ Two config entries on the same `(supplier, contract, region)` share one fetched 
 
 ### 2.3 The on-disk Store and cache invalidation
 
-The Store is `_MigratingStore` (`snapshot_store.py:1130`), a `Store[dict]` subclass whose `_async_migrate_func` returns `{}` for any blob written under an older `STORAGE_VERSION` (`snapshot_store.py:1141`). Every persisted field is re-derivable from a fresh fetch, so dropping the cache on a major-version mismatch is safe and avoids HA's "missing migration function" warning. `STORAGE_VERSION` is `2` (`const.py:480`).
+The Store is `_MigratingStore` (`snapshot_store.py:1130`), a `Store[dict]` subclass whose `_async_migrate_func` returns `{}` for any blob written under an older `STORAGE_VERSION` (`snapshot_store.py:1141`). Every persisted field is re-derivable from a fresh fetch, so dropping the cache on a major-version mismatch is safe and avoids HA's "missing migration function" warning. `STORAGE_VERSION` is `2` (`const.py:496`).
 
 There is a **second**, finer version inside the serialized snapshot: `_SNAPSHOT_SCHEMA_VERSION`, currently `58` (`snapshot_store.py:1371`). `_snapshot_to_dict` stamps it (`snapshot_store.py:1417`); `_snapshot_from_dict` raises `ValueError` when a loaded blob's `_schema_version` is below the `min_schema_version` it is asked for (`snapshot_store.py:1468`), which `async_load_persistent` catches and treats as "discard and re-fetch", keeping the rejected dict in `_stale_snapshot`.
 
@@ -212,9 +212,18 @@ otherwise hard-fail over a key it never held once its leg re-prices to
 `SpotMonthlyRates`. `_cohort_energy_leg` therefore drops the cohort leg when no
 key is configured (`coordinator.py:773`), keeping the current card instead.
 
-**Cohort resolution order** (`_cohort_energy_leg`, `cohort.py:630`): the
+**Which month the cohort asks for** (`_tariff_card_month`, `cohort.py:100`): the
+entry's own tariff card month when it sets one, else its contract start date.
+They differ by about a month for anyone who switched supplier, since a fixed or
+dynamic contract is locked to the card in force at SIGNING and the switch takes
+a month to go through, and reading the start date alone therefore billed a
+switcher one card late (issue #96). Only this lookup reads the card month; the
+year-to-date window, the fee proration and the welcome-credit window keep
+reading the start date, which is about when the household began being supplied.
+
+**Cohort resolution order** (`_cohort_energy_leg`, `cohort.py:643`): the
 hand-entered signing rate first, then the archived signing-month card, then the
-current card. `_manual_energy_leg` (`cohort.py:142`) overlays what the user
+current card. `_manual_energy_leg` (`cohort.py:155`) overlays what the user
 typed onto whichever card was retrieved, **per field**, so a half-filled form
 keeps the archived signing-month values for the boxes left blank rather than
 today's. The archive is authoritative only about the *published* card; a
@@ -290,7 +299,7 @@ The curve is persisted under the `spot_cache` payload key and restored beside `h
 | `hourly` | `dict[datetime, PriceBreakdown]` | UTC-keyed price table (48-ish slots covering today+tomorrow); keys are hour or quarter-hour boundaries per `resolution` | current/next/today/tomorrow price sensors and window services; `tomorrow_prices_available` binary sensor (`sensor.py:273`, `binary_sensor.py:67`) |
 | `resolution` | `str` | `RESOLUTION_HOURLY` or `RESOLUTION_QUARTER`; slot width of `hourly` keys | slot truncation in `sensor.py:273`; window sizing in `__init__.py:559` |
 | `snapshot_publication` | `str` | supplier's publication label for the current card | `current_price` sensor attribute (`sensor.py:594`) |
-| `signing_card` | `str` | the card a contract start date resolved to; empty when no start date is set | `current_price` sensor attribute, diagnostics `coordinator` block |
+| `signing_card` | `str` | the card the cohort month resolved to; empty when the entry names none | `current_price` sensor attribute, diagnostics `coordinator` block |
 | `snapshot_age_hours` | `float` | hours since `_snapshot_fetched_at` (`inf` if never) | `current_price` sensor attribute (`sensor.py:595`) |
 | `snapshot_stale` | `bool` | True when age > 7 days | `current_price` sensor attribute (`sensor.py:596`) |
 | `snapshot_valid_until` | `date \| None` | last calendar day the rates apply; `None` = unknown | `tomorrow_prices_available` binary sensor (`binary_sensor.py:65`) |
@@ -315,7 +324,7 @@ The current-slot sensors (`current_price`, `energy_component`, `network_componen
 
 ## 5. Slot selection and the live price table
 
-`_build_hourly` (`coordinator.py:1490`) builds the UTC-keyed `hourly` table:
+`_build_hourly` (`coordinator.py:1491`) builds the UTC-keyed `hourly` table:
 
 - **Dynamic** (`coordinator.py:833`): one breakdown per spot returned by ENTSO-E; the table's resolution follows the spot grid (15-minute for quarter-hourly suppliers).
 - **Static/TOU/Impact** (`coordinator.py:894`): iterate UTC from local midnight to the start of the day after tomorrow, one slot per clock hour, so DST seams keep the wall-clock gap correct (47 slots spring-forward, 49 fall-back, 48 otherwise). The local-midnight anchor makes `today_min`/`today_max`/`today_average` cover the full local day rather than "now to midnight".
@@ -348,7 +357,7 @@ The window computation is *not* owned by the coordinator. `_find_window` (`__ini
 
 - Outside Flanders it resets both to 0/`None` (`coordinator_peak.py:112`) so a stale peak from a former Flanders config doesn't linger.
 - It rolls over on the local 1st of the month (`coordinator_peak.py:127`); UTC would lag CET/CEST users at the boundary.
-- `CAPACITY_MODE_FIXED` uses the configured value directly (`const.py:429`); `CAPACITY_MODE_SENSOR` takes a rolling max of the peak-power sensor (`const.py:428`), scaling W/VA to kW (`const.py:428`, issue #19: an unscaled 4481 W stored as 4481 kW inflated capacity cost 1000x).
+- `CAPACITY_MODE_FIXED` uses the configured value directly (`const.py:445`); `CAPACITY_MODE_SENSOR` takes a rolling max of the peak-power sensor (`const.py:444`), scaling W/VA to kW (`const.py:444`, issue #19: an unscaled 4481 W stored as 4481 kW inflated capacity cost 1000x).
 - On rollover the closing month is banked into `_peak_history` and the window is pruned to the eleven most recent completed months, so with the running one the mean covers twelve. A month still at `0.0` is not banked: no reading was ever collected, which is not a measured zero.
 
 `_billed_peak_kw` turns that window into the quantity Fluvius actually charges on, the "gemiddelde maandpiek". Its methodology gives the formula outright: `Rekenkundig gemiddelde van de Max (Maandpiek (m), 2.5) voor elke maand (m)`, i.e. the floor lands on each month BEFORE the mean, not on the mean. Every term is then at least the floor, so the mean is too and no outer clamp is needed. `CAPACITY_MODE_FIXED` bypasses the window and floors the configured value directly. `_peak_kw` itself is left raw, so `monthly_peak_kw` reports a measurement rather than a billing figure. The in-progress month only joins the mean once it HAS a reading: it is reset to 0 on the local 1st, and a zero floored to 2,5 kW is not a measured peak, so counting it stepped the mean (and with it `capacity_cost` and `current_year_cost`) down at every rollover and back up as the month accrued. This is the same estimate-the-gap rule already applied to a month that was never measured.
@@ -359,9 +368,9 @@ The same charge is accrued into the running bill by `_ytd_capacity`, which walks
 
 ## 7. Year-to-date / current-year cost
 
-`_compute_current_year_cost` (`ytd_cost.py:757`) computes the running bill from the year-to-date window start to today. That is 1 January of the local year unless the entry ticked `ytd_from_contract_start` beside a contract start date, in which case `ytd_window_start` (`cohort.py`) returns the later of the two -- clamped to 1 January, because the sensor is a TOTAL the recorder buckets per calendar year and a window reaching into a previous year would have the compiler see a reset that never happened. Every leg reads that one helper: the hourly and daily energy walks, `_walk_ytd_months` (so fees pro-rate over the days the contract actually covers rather than billing a full year against half of one), the historical spot fetch, the statistics backfill, and the `last_reset` the sensor publishes. It bills each past day at the tariff of the month that day belongs to, using an archived snapshot when the supplier exposes `fetch_for_month` (`providers/base.py:1354`) and the current snapshot as a proxy otherwise (`_snapshot_for_month`, `snapshot_store.py:822`). When a contract start date is set it routes every past month through `_effective_snapshot_for_month` (`cohort.py:701`) instead, which splices the signing cohort's energy leg AND its feed-in coefficients onto each delivery month's overlays, and dispatches on that cohort's effective energy kind so a re-priced variable contract takes the monthly-mean path. The whole year is recomputed from scratch each tick by design (`ytd_cost.py:146`): prior days are not immutable (a late ENTSO-E fill or a backfill correction changes a past rate), and the full replay is cheap pure arithmetic.
+`_compute_current_year_cost` (`ytd_cost.py:757`) computes the running bill from the year-to-date window start to today. That is 1 January of the local year unless the entry ticked `ytd_from_contract_start` beside a contract start date, in which case `ytd_window_start` (`cohort.py`) returns the later of the two -- clamped to 1 January, because the sensor is a TOTAL the recorder buckets per calendar year and a window reaching into a previous year would have the compiler see a reset that never happened. Every leg reads that one helper: the hourly and daily energy walks, `_walk_ytd_months` (so fees pro-rate over the days the contract actually covers rather than billing a full year against half of one), the historical spot fetch, the statistics backfill, and the `last_reset` the sensor publishes. It bills each past day at the tariff of the month that day belongs to, using an archived snapshot when the supplier exposes `fetch_for_month` (`providers/base.py:1354`) and the current snapshot as a proxy otherwise (`_snapshot_for_month`, `snapshot_store.py:822`). When a contract start date is set it routes every past month through `_effective_snapshot_for_month` (`cohort.py:714`) instead, which splices the signing cohort's energy leg AND its feed-in coefficients onto each delivery month's overlays, and dispatches on that cohort's effective energy kind so a re-priced variable contract takes the monthly-mean path. The whole year is recomputed from scratch each tick by design (`ytd_cost.py:146`): prior days are not immutable (a late ENTSO-E fill or a backfill correction changes a past rate), and the full replay is cheap pure arithmetic.
 
-**The FIRST tick prices the year from the cards already in hand.** The walk above is one archived PDF per elapsed month, and it runs inside config-entry setup: a Frank Energie card takes about 25 s to lay out on a Raspberry Pi, so a September start spent 226 s there and Home Assistant cancelled the whole of bootstrap stage 2 over it (issue #88). The first tick therefore passes `cached_only` (`coordinator.py:1041`), which answers every month from the cache and never reaches the network (`snapshot_store.py:687`), clears `_month_cards_deferred` and schedules `_fill_month_cards` (`coordinator.py:1374`) as an entry-tied background task. That walks the same months for real and requests a refresh, but only when it retrieved a card the tick did not have -- a warm cache changes nothing and an extra full tick per entry per restart would buy nothing. What the deferral costs is the months the cache is missing: they bill their fees, network and tax legs off the current card rather than their own, which is what a supplier with no archive bills all year. A row the cache *does* hold is handed back even past its TTL, since a caller that cannot fetch keeps what it has rather than forfeiting a month it is already holding. `cached_only` stops at the year-to-date walk: `_cohort_legs` still resolves the signing month, because the live price table is built from it on the same tick and its row is in the cache by then.
+**The FIRST tick prices the year from the cards already in hand.** The walk above is one archived PDF per elapsed month, and it runs inside config-entry setup: a Frank Energie card takes about 25 s to lay out on a Raspberry Pi, so a September start spent 226 s there and Home Assistant cancelled the whole of bootstrap stage 2 over it (issue #88). The first tick therefore passes `cached_only` (`coordinator.py:1041`), which answers every month from the cache and never reaches the network (`snapshot_store.py:687`), clears `_month_cards_deferred` and schedules `_fill_month_cards` (`coordinator.py:1375`) as an entry-tied background task. That walks the same months for real and requests a refresh, but only when it retrieved a card the tick did not have -- a warm cache changes nothing and an extra full tick per entry per restart would buy nothing. What the deferral costs is the months the cache is missing: they bill their fees, network and tax legs off the current card rather than their own, which is what a supplier with no archive bills all year. A row the cache *does* hold is handed back even past its TTL, since a caller that cannot fetch keeps what it has rather than forfeiting a month it is already holding. `cached_only` stops at the year-to-date walk: `_cohort_legs` still resolves the signing month, because the live price table is built from it on the same tick and its row is in the cache by then.
 
 Settled months are also written to disk (section 10), so the fill has nothing left to fetch after the first day and a restart costs one card, not one per month.
 
@@ -379,7 +388,7 @@ Three energy paths, chosen by contract shape:
 
 ### 7.1 Day/night register vs single-total reconstruction
 
-`_resolve_daily_kwh` resolves the consumption and injection sides independently from one of three wirings, keyed by `CONF_CONSUMPTION_KWH` / `CONF_INJECTION_KWH` and the day/night register pair (`const.py:400-401`):
+`_resolve_daily_kwh` resolves the consumption and injection sides independently from one of three wirings, keyed by `CONF_CONSUMPTION_KWH` / `CONF_INJECTION_KWH` and the day/night register pair (`const.py:416-417`):
 
 - **Day + night register pair** (`CONF_DAY_*_KWH` + `CONF_NIGHT_*_KWH`): one recorder delta per day per register, fanned into band slots.
 - **Single totals sensor** (`CONF_CONSUMPTION_KWH` / `CONF_INJECTION_KWH`): for mono meters the total goes to the day slot and the math sums it; for bi/dynamic meters `_recorder_daily_band_ratio` (`energy_meters.py:520`) recovers the day/night split from hourly recorder statistics binned on `is_offpeak`, defaulting to a time-weighted `_default_band_ratio_for` (`energy_meters.py:714`) for days with no accumulation so a flat Sunday isn't billed all-peak.
@@ -487,11 +496,11 @@ Negative-cache TTLs: `_SHARED_FAILURE_TTL` is 5 minutes (`snapshot_store.py:115`
 
 ### 9.1 Forcing a refresh
 
-`async_force_refresh` (`coordinator.py:1416`) backs the `be_electricity_prices.refresh` service (`__init__.py:362`). It sets the one-shot `_force_refresh` flag (honoured by `_self_is_fresh` and `_shared_is_fresh`), clears the spot cache, and pops the shared snapshot and negative-fetch rows so a sibling on the same tuple also re-fetches. It **also drops this tuple's per-month archive rows** via `_drop_monthly_rows` (`coordinator.py:1416`): the YTD walk runs Jan 1 through today inclusive, so the current delivery month sits in that cache too, with no TTL. Without the drop, a supplier that re-issues the current month's card under the same month (Eneco publishes corrected volumes) went on being billed from the first card fetched for the life of the HA process, and this service — whose whole purpose is picking up a corrected card — could not clear it. It intentionally keeps `self._snapshot`/`_snapshot_fetched_at` so a transient failure during the forced refresh doesn't blank the entry. `reset_monthly_peak` (`coordinator.py:1416`), behind the diagnostic Reset-peak button, drops `_peak_kw` and persists immediately.
+`async_force_refresh` (`coordinator.py:1417`) backs the `be_electricity_prices.refresh` service (`__init__.py:362`). It sets the one-shot `_force_refresh` flag (honoured by `_self_is_fresh` and `_shared_is_fresh`), clears the spot cache, and pops the shared snapshot and negative-fetch rows so a sibling on the same tuple also re-fetches. It **also drops this tuple's per-month archive rows** via `_drop_monthly_rows` (`coordinator.py:1417`): the YTD walk runs Jan 1 through today inclusive, so the current delivery month sits in that cache too, with no TTL. Without the drop, a supplier that re-issues the current month's card under the same month (Eneco publishes corrected volumes) went on being billed from the first card fetched for the life of the HA process, and this service — whose whole purpose is picking up a corrected card — could not clear it. It intentionally keeps `self._snapshot`/`_snapshot_fetched_at` so a transient failure during the forced refresh doesn't blank the entry. `reset_monthly_peak` (`coordinator.py:1417`), behind the diagnostic Reset-peak button, drops `_peak_kw` and persists immediately.
 
 ## 10. Persistence
 
-`_save_persistent` (`coordinator.py:1597`) writes `entry_supplier`/`entry_contract`/`entry_region` (the frozen `_supplier_tuple`, not live `entry.data`), the peak, the serialized snapshot, the settled archived month cards, and `historical_spots` pruned to the current YTD window. Two guards prevent a slow tick from clobbering a reloaded entry's state:
+`_save_persistent` (`coordinator.py:1598`) writes `entry_supplier`/`entry_contract`/`entry_region` (the frozen `_supplier_tuple`, not live `entry.data`), the peak, the serialized snapshot, the settled archived month cards, and `historical_spots` pruned to the current YTD window. Two guards prevent a slow tick from clobbering a reloaded entry's state:
 
 - **Identity guard** (`coordinator.py:955`): skip when `runtime_data` is a *different* coordinator (must not skip during first refresh, when it is `UNDEFINED`).
 - **Tuple guard** (`coordinator.py:975`): skip when live `entry.data` has drifted from `_supplier_tuple` (the OptionsFlow window where `entry.data` changed but `runtime_data` is still swapping).
