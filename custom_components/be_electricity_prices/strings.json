@@ -19,9 +19,9 @@
           "ytd_from_contract_start": "Bill the year-to-date from the contract start date"
         },
         "data_description": {
-          "contract_start_date": "The date your contract started. For a fixed contract this prices you at the rate you locked in at signing instead of today's rate sheet, where the supplier keeps an archive of past cards. Leave blank to always use the current card.",
+          "contract_start_date": "The date your contract started. Your rate is then read off the card published in that month instead of today's, for every supplier that archives its past cards, and on fixed, dynamic and monthly-indexed contracts alike. If your tariff card is named for an earlier month than the one your supply began in, which is common when switching supplier, enter a date in the card's month instead: that is the card you are held to for the term, and energie.be prints that month in the product name (Elektriciteit dynamisch particulier online 06/26). The signing_card attribute on the current_price sensor names the card the entry ended up on. Leave blank to always use the current card.",
           "contract_end_date": "The date your contract ends. Exposed as a timestamp sensor so an automation can remind you to renew, and used by the projected year cost to say how much of the year is still under this contract. It changes no billed rate.",
-          "ytd_from_contract_start": "By default the year-to-date cost counts from 1 January, whoever supplied you then. Tick this to start it at the contract start date above instead, so the figure covers only this contract. Fees are pro-rated over the same window, and the value drops the first time it applies. Only affects the contract's first calendar year; from the next 1 January the two are the same."
+          "ytd_from_contract_start": "By default the year-to-date cost counts from 1 January, whoever supplied you then. Tick this to start it at the contract start date above instead, so the figure covers only this contract. It reads that same date, so setting it to your tariff card's month rather than the day your supply began moves this window with it. Fees are pro-rated over the same window, and the value drops the first time it applies. Only affects the contract's first calendar year; from the next 1 January the two are the same."
         }
       },
       "signed_rate": {
@@ -312,7 +312,7 @@
         "data_description": {
           "contract_start_date": "[%key:component::be_electricity_prices::config::step::contract::data_description::contract_start_date%]",
           "contract_end_date": "[%key:component::be_electricity_prices::config::step::contract::data_description::contract_end_date%]",
-          "ytd_from_contract_start": "By default the year-to-date cost counts from 1 January, whoever supplied you then. Tick this to start it at the contract start date above instead, so the figure covers only this contract. Fees are pro-rated over the same window, and the value drops the first time it applies. Only affects the contract's first calendar year; from the next 1 January the two are the same."
+          "ytd_from_contract_start": "By default the year-to-date cost counts from 1 January, whoever supplied you then. Tick this to start it at the contract start date above instead, so the figure covers only this contract. It reads that same date, so setting it to your tariff card's month rather than the day your supply began moves this window with it. Fees are pro-rated over the same window, and the value drops the first time it applies. Only affects the contract's first calendar year; from the next 1 January the two are the same."
         }
       },
       "signed_rate": {
