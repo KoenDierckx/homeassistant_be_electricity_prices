@@ -5329,6 +5329,110 @@ async def test_cohort_leaves_a_printed_only_feed_in_alone(
     assert legs.injection is None
 
 
+async def test_cohort_card_names_the_card_the_legs_came_off(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    """Issue #96: the price alone cannot say which card produced it.
+
+    energie.be printed the same formula from May to August 2026, so four
+    signing months billed identically and the entry looked stuck on one card.
+    The label the cohort resolved to is the only thing that tells those apart
+    from the outside.
+    """
+    from custom_components.be_electricity_prices.cohort import _cohort_legs
+
+    freezer.move_to("2026-09-15 12:00:00+02:00")
+    current = make_snapshot(
+        energy=DynamicRates(factor=1.0812, base=0.005194),
+        publication_label="september 2026",
+    )
+    archived = make_snapshot(
+        energy=DynamicRates(factor=1.1024, base=0.0053),
+        publication_label="juni 2026",
+    )
+
+    async def _ffm(*_a: object, **_k: object) -> SupplierSnapshot:
+        return archived
+
+    _monthly_snapshots(hass).clear()
+    entry = _entry(contract="test", contract_start_date="2026-06-01")
+    legs = await _cohort_legs(
+        hass, MagicMock(), _fixed_extractor(_ffm), "test", "wallonia", entry, current
+    )
+    assert legs.card == "juni 2026"
+
+
+async def test_cohort_card_says_which_month_the_archive_could_not_serve(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    """A start date that retrieved nothing bills the current card.
+
+    Publishing the current card's label on its own would be indistinguishable
+    from a cohort that resolved, which is exactly the ambiguity this attribute
+    exists to remove, so the month that came up empty is named.
+    """
+    from custom_components.be_electricity_prices.cohort import _cohort_legs
+
+    freezer.move_to("2026-09-15 12:00:00+02:00")
+    current = make_snapshot(
+        energy=FixedRates(single=0.30), publication_label="september 2026"
+    )
+    _monthly_snapshots(hass).clear()
+    entry = _entry(contract="test", contract_start_date="2026-06-01")
+    legs = await _cohort_legs(
+        hass, MagicMock(), _fixed_extractor(None), "test", "wallonia", entry, current
+    )
+    assert legs.energy is None
+    assert legs.card == "september 2026 (no archived card for 2026-06)"
+
+
+async def test_cohort_card_is_the_current_card_for_a_start_this_month(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    """Signed this month: the current card IS the signing-month card, so there
+    is nothing missing to report."""
+    from custom_components.be_electricity_prices.cohort import _cohort_legs
+
+    freezer.move_to("2026-09-15 12:00:00+02:00")
+    current = make_snapshot(
+        energy=FixedRates(single=0.30), publication_label="september 2026"
+    )
+
+    async def _ffm(*_a: object, **_k: object) -> SupplierSnapshot:
+        raise AssertionError("the running month must not be fetched")
+
+    _monthly_snapshots(hass).clear()
+    entry = _entry(contract="test", contract_start_date="2026-09-01")
+    legs = await _cohort_legs(
+        hass, MagicMock(), _fixed_extractor(_ffm), "test", "wallonia", entry, current
+    )
+    assert legs.card == "september 2026"
+
+
+async def test_cohort_card_empty_without_a_start_date(hass: HomeAssistant) -> None:
+    """No start date, nothing to say: the attribute stays off the sensor."""
+    from custom_components.be_electricity_prices.cohort import _cohort_legs
+
+    current = make_snapshot(
+        energy=FixedRates(single=0.30), publication_label="september 2026"
+    )
+
+    async def _ffm(*_a: object, **_k: object) -> SupplierSnapshot:
+        raise AssertionError("no start date must not reach the archive")
+
+    _monthly_snapshots(hass).clear()
+    legs = await _cohort_legs(
+        hass,
+        MagicMock(),
+        _fixed_extractor(_ffm),
+        "test",
+        "wallonia",
+        _entry(contract="test"),
+        current,
+    )
+    assert legs.card == ""
+
+
 async def test_cohort_energy_leg_none_without_start_date(hass: HomeAssistant) -> None:
     current = make_snapshot(energy=FixedRates(single=0.30))
 

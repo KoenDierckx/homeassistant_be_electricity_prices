@@ -432,14 +432,46 @@ def _month_indexed_leg(
     return _cohort_energy_from_archived(snapshot)
 
 
+def _cohort_card(
+    start: date,
+    month_now: date,
+    archived: "SupplierSnapshot | None",
+    current: "SupplierSnapshot",
+) -> str:
+    """Which card a contract with a start date ends up billing on.
+
+    The price a cohort entry publishes says nothing about where it came
+    from: ``snapshot_publication`` names the card that was fetched today
+    whether or not the signing month's card was retrieved and spliced in, so
+    "did my start date do anything?" could only be answered from a
+    diagnostics dump. Issue #96 is that question asked from the outside, on
+    a supplier that happened to print the same formula four months running.
+
+    Three answers, one string. The archived card by name when it was
+    retrieved; the current card by name for a contract signed this month,
+    where the two are the same card; and the current card WITH the month
+    that could not be retrieved for a past signing the archive has nothing
+    for, which is the case the entry otherwise hides.
+    """
+    if archived is not None:
+        return archived.publication_label or f"{start:%Y-%m}"
+    label = current.publication_label or "the current card"
+    if start >= month_now:
+        return label
+    return f"{label} (no archived card for {start:%Y-%m})"
+
+
 class _CohortLegs(NamedTuple):
     """What a signing cohort bills at, both halves of it.
 
     ``None`` on either means "no override, keep the current card's leg".
+    ``card`` names the card they were read off, for the sensor attribute;
+    empty when the entry carries no start date and nothing was resolved.
     """
 
     energy: EnergyRates | None
     injection: InjectionRates | None
+    card: str = ""
 
 
 async def _cohort_legs(
@@ -502,6 +534,7 @@ async def _cohort_legs(
     if start is None:
         return _CohortLegs(_month_indexed_leg(current_snapshot, entry), None)
     now = dt_util.now()
+    this_month = date(now.year, now.month, 1)
     # Resolve the archived signing-month card first, as the base the typed
     # rate overlays onto. Fixed / dynamic re-price from its leg directly (the
     # locked value); variable re-prices from the cohort's parsed coefficients
@@ -513,7 +546,7 @@ async def _cohort_legs(
     # rolled over and the price jumped under the user.
     archived: EnergyRates | None = None
     archived_snap: SupplierSnapshot | None = None
-    if start < date(now.year, now.month, 1) and extractor.fetch_for_month is not None:
+    if start < this_month and extractor.fetch_for_month is not None:
         snap_start = await _snapshot_for_month(
             hass,
             session,
@@ -587,7 +620,11 @@ async def _cohort_legs(
         if archived_snap is None
         else _cohort_injection_from_archived(archived_snap, current_snapshot)
     )
-    return _CohortLegs(energy=energy, injection=injection)
+    return _CohortLegs(
+        energy=energy,
+        injection=injection,
+        card=_cohort_card(start, this_month, archived_snap, current_snapshot),
+    )
 
 
 async def _cohort_energy_leg(

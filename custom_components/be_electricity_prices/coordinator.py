@@ -204,6 +204,10 @@ class CoordinatorData:
     # cheapest-window service.
     resolution: str = RESOLUTION_HOURLY
     snapshot_publication: str = ""
+    # Which card a contract with a start date bills on, once the signing
+    # cohort has been resolved. Empty when no start date is set, so the
+    # attribute appears only where it has something to say.
+    signing_card: str = ""
     snapshot_age_hours: float = 0.0
     snapshot_stale: bool = False
     # Last calendar day the snapshot's rates apply to. ``None`` means
@@ -1254,6 +1258,7 @@ class BePricesCoordinator(
                 else RESOLUTION_HOURLY
             ),
             snapshot_publication=self._snapshot.publication_label,
+            signing_card=cohort.card,
             snapshot_age_hours=age,
             snapshot_stale=stale,
             snapshot_valid_until=self._snapshot.valid_until,

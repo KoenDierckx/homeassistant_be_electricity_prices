@@ -395,6 +395,37 @@ def test_tomorrow_aggregations_report_inside_the_card_validity() -> None:
         assert _tomorrow_max(data) == pytest.approx(0.20)
 
 
+def test_signing_card_attribute_appears_only_with_a_cohort() -> None:
+    """The card a start date resolved to, published beside the price.
+
+    Issue #96: a supplier that printed the same formula four months running
+    made a correctly retrieved signing card indistinguishable from none at
+    all, and the only way to check was a diagnostics dump. An entry with no
+    start date has nothing to say, so it publishes nothing rather than an
+    empty string the UI would still render a row for.
+    """
+    from types import SimpleNamespace
+
+    from custom_components.be_electricity_prices.sensor import SENSORS, BePriceSensor
+
+    def _attrs(data: CoordinatorData) -> dict[str, Any]:
+        sensor = BePriceSensor(
+            SimpleNamespace(  # type: ignore[arg-type]
+                data=data,
+                entry=SimpleNamespace(entry_id="x", data={}, title="t"),
+                last_update_success=True,
+            ),
+            next(d for d in SENSORS if d.key == "current_price"),
+        )
+        return sensor.extra_state_attributes
+
+    data = _today_data([0.10] * 24)
+    assert "signing_card" not in _attrs(data)
+    assert _attrs(replace(data, signing_card="juni 2026"))["signing_card"] == (
+        "juni 2026"
+    )
+
+
 def test_current_price_bulk_attributes_are_unrecorded() -> None:
     """The hourly today / tomorrow arrays and ranked windows must stay out
     of the recorder so they don't bloat the long-term database."""

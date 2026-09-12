@@ -202,6 +202,10 @@ async def async_get_config_entry_diagnostics(
         },
         "coordinator": {
             "snapshot_publication": data.snapshot_publication,
+            # Which card a start date actually resolved to, next to the
+            # per-month labels below: a report that says "my start date does
+            # nothing" is answered by these two lines together.
+            "signing_card": data.signing_card,
             "snapshot_age_hours": round(data.snapshot_age_hours, 2),
             "snapshot_stale": data.snapshot_stale,
             "snapshot_valid_until": (

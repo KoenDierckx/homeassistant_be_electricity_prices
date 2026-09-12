@@ -73,7 +73,7 @@ Most descriptions are built by the `_eur_per_kwh(key, value_fn)` helper
 | `CAPACITY_SENSORS` (2) | `sensor.py:504` | `CONF_REGION == REGION_FLANDERS` |
 | `PROSUMER_SENSORS` (1) | `sensor.py:404` | `solar_kva > 0` and `CONF_SOLAR_REGIME == SOLAR_REGIME_COMPENSATION` |
 | `INJECTION_SENSORS` (1) | `sensor.py:415` | `CONF_SOLAR_REGIME == SOLAR_REGIME_INJECTION` |
-| `ContractEndDateSensor` (1) | `sensor.py:720` | `CONF_CONTRACT_END_DATE` is set |
+| `ContractEndDateSensor` (1) | `sensor.py:724` | `CONF_CONTRACT_END_DATE` is set |
 
 The capacity gate exists because the Flemish capacity tariff (introduced Jan
 2023) is the only region that bills a monthly-peak term; outside Flanders
@@ -173,6 +173,7 @@ The payload:
 | Attribute | Source | Meaning |
 | --- | --- | --- |
 | `snapshot_publication` | `data.snapshot_publication` | supplier card's publication label |
+| `signing_card` | `data.signing_card` | present only when a contract start date is set: the card the signing cohort resolved to, or the current card's label followed by the month the archive could not serve |
 | `snapshot_age_hours` | `round(data.snapshot_age_hours, 2)` | hours since the snapshot was fetched |
 | `snapshot_stale` | `data.snapshot_stale` | true past the staleness threshold |
 | `last_error` | `data.last_error` | last fetch/parse error string, or empty. A fetch failure always names the exception, so a CDN timeout reads `network error fetching <url>: TimeoutError` |
@@ -521,7 +522,7 @@ Top-level dump keys:
 
 The `coordinator` block (`diagnostics.py:112`) mirrors the current-price
 attributes plus every scalar `CoordinatorData` field:
-`snapshot_publication`, `snapshot_age_hours`, `snapshot_stale`,
+`snapshot_publication`, `signing_card`, `snapshot_age_hours`, `snapshot_stale`,
 `snapshot_valid_until`, `last_error`, `monthly_peak_kw`, `monthly_peak_month`,
 `capacity_cost_eur`, `prosumer_cost_eur`, `yearly_fixed_fee_eur`,
 `energy_fund_eur_per_month`, `injection_price_eur_per_kwh`,

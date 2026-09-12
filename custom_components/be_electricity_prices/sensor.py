@@ -655,6 +655,10 @@ class BePriceSensor(CoordinatorEntity[BePricesCoordinator], SensorEntity):
             today, tomorrow = _split_today_tomorrow(data)
             return {
                 "snapshot_publication": data.snapshot_publication,
+                # Only for an entry that carries a contract start date, and
+                # then always: a cohort entry whose archive came up empty
+                # bills the current card, and saying so is the whole point.
+                **({"signing_card": data.signing_card} if data.signing_card else {}),
                 "snapshot_age_hours": round(data.snapshot_age_hours, 2),
                 "snapshot_stale": data.snapshot_stale,
                 "last_error": data.last_error,

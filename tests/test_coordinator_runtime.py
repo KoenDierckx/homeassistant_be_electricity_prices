@@ -4016,6 +4016,62 @@ async def test_the_signing_month_card_is_kept_on_disk(
     assert signing is not None and signing.publication_label == "2024-11"
 
 
+async def test_the_resolved_signing_card_reaches_the_coordinator(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    """The label has to survive the trip from _cohort_legs to CoordinatorData.
+
+    The cohort helper is where every other test of this looks, and a
+    passthrough the coordinator never wired up would pass all of them while
+    the sensor published nothing. What the entry shows is the whole feature
+    (issue #96), so it is asserted where the sensor reads it.
+    """
+    freezer.move_to("2026-09-15 10:30:00+00:00")
+    entry = _dynamic_entry()
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, "contract_start_date": "2026-06-10"}
+    )
+    coord = BePricesCoordinator(hass, entry)
+    coord._snapshot = make_snapshot(
+        supplier="cociter",
+        contract="cociter_dynamic",
+        energy=DynamicRates(factor=1.02, base=0.0049),
+        publication_label="septembre 2026",
+    )
+    coord._month_cards_deferred = False
+    coord._profiles_deferred = False
+    _monthly_snapshots(hass).clear()
+    _monthly_fetched_at(hass).clear()
+    _monthly_snapshots(hass)[("cociter", "cociter_dynamic", "wallonia", "2026-06")] = (
+        make_snapshot(
+            supplier="cociter",
+            contract="cociter_dynamic",
+            energy=DynamicRates(factor=1.04, base=0.005),
+            publication_label="juin 2026",
+        )
+    )
+    coord._maybe_refresh_snapshot = AsyncMock()  # type: ignore[method-assign]
+    coord._track_monthly_peak = AsyncMock()  # type: ignore[method-assign]
+    coord._fetch_spot_prices = AsyncMock(return_value={})  # type: ignore[method-assign]
+    coord._ensure_historical_spots = AsyncMock()  # type: ignore[method-assign]
+
+    with (
+        patch.object(coord._store, "async_save", AsyncMock()),
+        patch(
+            "custom_components.be_electricity_prices.ytd_cost."
+            "_compute_current_year_cost",
+            AsyncMock(return_value=0.0),
+        ),
+    ):
+        data = await coord._update_body()
+
+    # The June card was the one spliced in, and the entry says so rather than
+    # reporting the September card it also fetched.
+    assert data.signing_card == "juin 2026"
+    assert data.snapshot_publication == "septembre 2026"
+
+
 async def test_a_month_with_no_card_is_not_re_asked_every_restart(
     hass: HomeAssistant, freezer: Any
 ) -> None:
