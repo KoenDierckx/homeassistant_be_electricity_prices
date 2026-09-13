@@ -767,7 +767,13 @@
         "name": "Netwerkcomponent"
       },
       "taxes_component": {
-        "name": "Belastingcomponent"
+        "name": "Belastingencomponent"
+      },
+      "price_peak": {
+        "name": "Piekprijs (dag)"
+      },
+      "price_offpeak": {
+        "name": "Dalprijs (nacht)"
       },
       "capacity_cost": {
         "name": "Capaciteitskost"

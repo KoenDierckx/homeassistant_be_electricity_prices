@@ -769,6 +769,12 @@
       "taxes_component": {
         "name": "Composante taxes"
       },
+      "price_peak": {
+        "name": "Prix heures pleines (jour)"
+      },
+      "price_offpeak": {
+        "name": "Prix heures creuses (nuit)"
+      },
       "capacity_cost": {
         "name": "Cout capacitaire"
       },

@@ -769,6 +769,12 @@
       "taxes_component": {
         "name": "Taxes component"
       },
+      "price_peak": {
+        "name": "Peak price (day)"
+      },
+      "price_offpeak": {
+        "name": "Offpeak price (night)"
+      },
       "capacity_cost": {
         "name": "Capacity cost"
       },

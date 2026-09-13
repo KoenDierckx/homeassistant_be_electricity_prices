@@ -769,6 +769,12 @@
       "taxes_component": {
         "name": "Abgabenkomponente"
       },
+      "price_peak": {
+        "name": "Hochtarifpreis (Tag)"
+      },
+      "price_offpeak": {
+        "name": "Niedertarifpreis (Nacht)"
+      },
       "capacity_cost": {
         "name": "Kapazitaetskosten"
       },

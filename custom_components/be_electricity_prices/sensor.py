@@ -401,6 +401,24 @@ SENSORS: tuple[BePriceSensorDescription, ...] = (
     _eur_per_kwh("taxes_component", _current_field("taxes")),
 )
 
+# Static peak/offpeak prices for the Energy Dashboard. These do NOT vary with
+# the time of day - they represent the constant all-in rate for that tariff
+# band. Useful for bi-hourly meter configurations where the Energy Dashboard
+# needs separate price entities for tariff 1 (day) and tariff 2 (night).
+# Returns None for dynamic/TOU contracts or Wallonia impact tariff.
+BI_HOURLY_SENSORS: tuple[BePriceSensorDescription, ...] = (
+    _eur_per_kwh(
+        "price_peak",
+        lambda d: None if d.static_peak_price is None else d.static_peak_price.all_in,
+    ),
+    _eur_per_kwh(
+        "price_offpeak",
+        lambda d: (
+            None if d.static_offpeak_price is None else d.static_offpeak_price.all_in
+        ),
+    ),
+)
+
 PROSUMER_SENSORS: tuple[BePriceSensorDescription, ...] = (
     BePriceSensorDescription(
         key="prosumer_cost",
@@ -545,6 +563,7 @@ async def async_setup_entry(
 
     descriptions: list[BePriceSensorDescription] = list(SENSORS)
     descriptions.extend(FEE_SENSORS)
+    descriptions.extend(BI_HOURLY_SENSORS)
     if entry.data.get(CONF_REGION) == REGION_FLANDERS:
         descriptions.extend(CAPACITY_SENSORS)
     try:
