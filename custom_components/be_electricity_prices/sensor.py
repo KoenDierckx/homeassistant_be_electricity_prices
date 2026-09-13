@@ -434,6 +434,15 @@ INJECTION_SENSORS: tuple[BePriceSensorDescription, ...] = (
     _eur_per_kwh("injection_price", _current_injection),
 )
 
+# Static injection (feed-in) rates for bi-hourly meter configurations.
+# These are the constant day and night feed-in rates for contracts that
+# print separate injection rates per register (e.g. Trevion Vast).
+# None for contracts with a single injection rate or spot-indexed formulas.
+BI_HOURLY_INJECTION_SENSORS: tuple[BePriceSensorDescription, ...] = (
+    _eur_per_kwh("injection_price_peak", lambda d: d.static_injection_peak),
+    _eur_per_kwh("injection_price_offpeak", lambda d: d.static_injection_offpeak),
+)
+
 FEE_SENSORS: tuple[BePriceSensorDescription, ...] = (
     BePriceSensorDescription(
         key="fixed_fee_eur_per_year",
@@ -575,6 +584,7 @@ async def async_setup_entry(
         descriptions.extend(PROSUMER_SENSORS)
     if regime == SOLAR_REGIME_INJECTION:
         descriptions.extend(INJECTION_SENSORS)
+        descriptions.extend(BI_HOURLY_INJECTION_SENSORS)
 
     entities: list[SensorEntity] = [
         BePriceSensor(coordinator, desc) for desc in descriptions

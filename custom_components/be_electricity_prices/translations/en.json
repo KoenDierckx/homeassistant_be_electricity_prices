@@ -787,6 +787,12 @@
       "injection_price": {
         "name": "Injection price"
       },
+      "injection_price_peak": {
+        "name": "Injection price peak (day)"
+      },
+      "injection_price_offpeak": {
+        "name": "Injection price offpeak (night)"
+      },
       "fixed_fee_eur_per_year": {
         "name": "Fixed fee per year"
       },

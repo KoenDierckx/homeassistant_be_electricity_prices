@@ -787,6 +787,12 @@
       "injection_price": {
         "name": "Injectieprijs"
       },
+      "injection_price_peak": {
+        "name": "Injectieprijs piek (dag)"
+      },
+      "injection_price_offpeak": {
+        "name": "Injectieprijs dal (nacht)"
+      },
       "fixed_fee_eur_per_year": {
         "name": "Vaste vergoeding per jaar"
       },

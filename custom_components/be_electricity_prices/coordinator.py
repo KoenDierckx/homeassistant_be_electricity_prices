@@ -206,6 +206,11 @@ class CoordinatorData:
     # expects one price entity per grid source (tariff 1 = day, tariff 2 = night).
     static_peak_price: PriceBreakdown | None = None
     static_offpeak_price: PriceBreakdown | None = None
+    # Static injection (feed-in) rates for peak and offpeak, for bi-hourly
+    # meter configurations with separate day/night injection compensation.
+    # None when the contract has a single injection rate or spot-indexed.
+    static_injection_peak: float | None = None
+    static_injection_offpeak: float | None = None
     # Grid resolution of the keys in ``hourly``: RESOLUTION_HOURLY for
     # every static / hourly-billed contract, RESOLUTION_QUARTER for
     # dynamic suppliers that bill per quarter-hour (Engie). Consumers use
@@ -1277,6 +1282,16 @@ class BePricesCoordinator(
             static_peak = None
             static_offpeak = None
 
+        # Static injection (feed-in) rates for bi-hourly meters. None when the
+        # contract has a single injection rate, is spot-indexed, or has TOU slots.
+        # Trevion Vast and similar cards print separate day/night injection rates.
+        inj = priced.injection
+        static_inj_peak: float | None = None
+        static_inj_offpeak: float | None = None
+        if inj is not None and inj.bi_hourly and inj.peak is not None:
+            static_inj_peak = inj.peak
+            static_inj_offpeak = inj.offpeak
+
         return CoordinatorData(
             hourly=hourly,
             resolution=(
@@ -1313,6 +1328,8 @@ class BePricesCoordinator(
             projection_diagnostics=projection_breakdown or None,
             static_peak_price=static_peak,
             static_offpeak_price=static_offpeak,
+            static_injection_peak=static_inj_peak,
+            static_injection_offpeak=static_inj_offpeak,
         )
 
     async def _fill_year_spots(self) -> None:
